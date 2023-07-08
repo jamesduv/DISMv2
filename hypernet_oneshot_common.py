@@ -1,7 +1,7 @@
 import os
 
-import tf_models.dense_networks as dense_networks
-import tf_models.hypernet_oneshot_networks as hypernet
+import dense_networks
+import hypernet_oneshot_networks as hypernet
 
 def get_f_model(opt):
     '''Get the function handles for the classes defined above
@@ -15,7 +15,6 @@ def get_f_model(opt):
     network_class = opt['network_class']
     f_allowed = {   'keras_oneshot_v1'          : hypernet.keras_oneshot_v1,
                     'keras_oneshot_v2'          : hypernet.keras_oneshot_v2,
-                    'keras_oneshot_v3'          : hypernet.keras_oneshot_v3,
                     'keras_oneshot_fourier_v1'  : hypernet.keras_oneshot_fourier_v1,
                  }
     if network_class not in f_allowed.keys():

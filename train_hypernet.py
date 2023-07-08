@@ -2,7 +2,6 @@ import os
 import json
 import numpy as np
 
-
 import hypernet_oneshot_networks as hypernet_networks
 import dense_networks
 
@@ -78,11 +77,10 @@ train_model.train_dataset(      opt                 = opt,
                                 save_path_base      = save_path_base,
                                 is_train_efficient  = True,
                                 is_overwrite        = True,
-                                model_read_dir      = None,
                                 is_mixed_precision  = False,
+                                backend_precision_value = 'float32',
+                                model_read_dir      = None,
                                 is_checkpoint_model = False,
                                 is_downsample_val_data = True,
                                 val_data_downsample_factor = 0.06,
-                                is_verify_custom    = False,
-                                is_eager_execution  = False,
-                                is_truncated_data   = True,)
+                                is_eager_execution  = False,)

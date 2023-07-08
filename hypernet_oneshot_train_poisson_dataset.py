@@ -1,8 +1,3 @@
-try:
-    import setGPU
-except:
-    pass
-
 import os
 import pickle
 import json
@@ -10,14 +5,13 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.framework.ops import disable_eager_execution
 
-
-#import models, tools
+#import models, tools, dataloaders, etc
 import problem_settings as settings
 import hypernet_oneshot_networks as hypernet
 import hypernet_oneshot_common as hypernet_common
 import tf_util
-
 import learning_rate_schedules
+from dataloader_poisson import poissonDatasetLoader
 
 def train_dataset(  opt                     = None,
                     save_path_base          = None, 
@@ -29,9 +23,7 @@ def train_dataset(  opt                     = None,
                     is_checkpoint_model     = False,
                     is_downsample_val_data  = True,
                     val_data_downsample_factor = 0.1,
-                    is_verify_custom        = False,
-                    is_eager_execution      = False,
-                    is_truncated_data       = False,):
+                    is_eager_execution      = False,):
 
     if not is_eager_execution:
         disable_eager_execution()
@@ -56,23 +48,28 @@ def train_dataset(  opt                     = None,
         prob_set.save_settings_json(is_overwrite_json = True)
         is_continue_training = False
 
-    fn_dataset = os.path.join( os.environ['CFD_DATA_PATH'], 'poisson2d_datasets', opt['data_opt']['dataset'], 'dataset.pickle' )
-    fn_data_stats = os.path.join( os.environ['CFD_DATA_PATH'], 'poisson2d_datasets', opt['data_opt']['dataset'], 'data_stats.pickle' )
-    fn_gen_settings = os.path.join( os.environ['CFD_DATA_PATH'], 'poisson2d_datasets', opt['data_opt']['dataset'], 'generator_settings.pickle' )
-    dataset = pickle.load( open(fn_dataset, 'rb'))
-    generator_settings = pickle.load(open(fn_gen_settings, 'rb'))
+    dataloader = poissonDatasetLoader()
+    train_data, val_data = dataloader.load_dataset_h5()
+    generator_settings = dataloader.load_generator_settings_json()
+    data_stats = dataloader.load_data_stats_json()
+
+    # fn_dataset      = os.path.join( os.environ['CFD_DATA_PATH'], 'poisson2d_datasets', opt['data_opt']['dataset'], 'dataset.pickle' )
+    # fn_data_stats   = os.path.join( os.environ['CFD_DATA_PATH'], 'poisson2d_datasets', opt['data_opt']['dataset'], 'data_stats.pickle' )
+    # fn_gen_settings = os.path.join( os.environ['CFD_DATA_PATH'], 'poisson2d_datasets', opt['data_opt']['dataset'], 'generator_settings.pickle' )
+    # dataset = pickle.load( open(fn_dataset, 'rb'))
+    # generator_settings = pickle.load(open(fn_gen_settings, 'rb'))
     
-    train_data  = dataset['train_data']
-    val_data    = dataset['val_data']
+    # train_data  = dataset['train_data']
+    # val_data    = dataset['val_data']
+
 
     if is_downsample_val_data:
-        val_data = downsample_val_data_v2(  val_data                     = val_data, 
+        val_data = downsample_val_data_v2(  val_data                    = val_data, 
                                             val_data_downsample_factor  = val_data_downsample_factor,
                                             n_shape_classes             = generator_settings['n_shape_classes'])
 
 
     n_updates_per_epoch = int(np.ceil(train_data[0].shape[0] / prob_set.opt['train_opt']['batch_size'] ) )
-    data_stats = pickle.load(open(fn_data_stats, 'rb'))
 
     #update model settings to include data stats, also save separately
     prob_set.opt['data_opt']['data_stats'] = data_stats
@@ -93,13 +90,13 @@ def train_dataset(  opt                     = None,
     if is_checkpoint_model:
         net.make_callbacks_model()
 
-    #get the loss function
+    # get the loss function
     f_loss = tf_util.get_loss(prob_set.opt['train_opt']['loss'])
 
-    #get the optimizer
+    # get the optimizer
     f_optimizer = tf_util.get_optimizer_handle(prob_set.opt['train_opt']['optimizer'])
 
-    #TODO: add optimizer kwargs
+    # set learning rate or learning rate schedule
     if prob_set.opt['train_opt']['is_learning_rate_decay']:
         if prob_set.opt['train_opt']['learning_rate_decay_type'] == 'exponential_decay':
             lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay( 
@@ -122,7 +119,7 @@ def train_dataset(  opt                     = None,
 
     optimizer = f_optimizer(learning_rate = lr_schedule)
 
-    #if continuing training, load the previous end weights
+    # if continuing training, load the previous end weights
     if is_continue_training:
         #must call model before loading weights-only from .h5
         xfake   = np.zeros((1,1,prob_set.opt['model_opt']['inputs_dim_main']))
@@ -130,29 +127,19 @@ def train_dataset(  opt                     = None,
         net([xfake, mufake])
         net.load_weights( net.fn_weights_end)
 
-    #compile the model w/optimizer and loss
-    if is_truncated_data:
-        net.compile(optimizer   = optimizer,
-                    loss        = f_loss)
+    # compile the model w/optimizer and loss, train the model
+    net.compile(optimizer   = optimizer,
+                loss        = f_loss)
 
-        inputs_val = [val_data[0], val_data[1]]
+    inputs_val = [val_data[0], val_data[1]]
 
-        history = net.fit(  x   = [train_data[0], train_data[1]],
-                            y   = train_data[2],
-                            epochs      = net.opt['train_opt']['epochs'],
-                            callbacks   = net.call_backs,
-                            batch_size  = net.opt['train_opt']['batch_size'],
-                            validation_data = (inputs_val, val_data[2]),
+    history = net.fit(  x   = [train_data[0], train_data[1]],
+                        y   = train_data[2],
+                        epochs      = net.opt['train_opt']['epochs'],
+                        callbacks   = net.call_backs,
+                        batch_size  = net.opt['train_opt']['batch_size'],
+                        validation_data = (inputs_val, val_data[2]),
                         )
-    elif is_eager_execution:
-        net.compile(optimizer   = optimizer,
-                    loss        = f_loss)
-        history = net.train_custom(train_data = train_data, val_data = val_data)
-    else:
-        net.compile(optimizer   = optimizer,
-                    loss        = f_loss,
-                    run_eagerly = False)
-        history = net.train_custom_noneager(train_data = train_data, val_data = val_data)
 
 def downsample_val_data_v2(val_data, val_data_downsample_factor, n_shape_classes=8):
     '''Downsample the validation data by removing cases. Randomly remove the same number of cases from each shape class

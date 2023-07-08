@@ -1,8 +1,4 @@
 import os
-import random
-import copy
-import pickle
-
 import tensorflow as tf
 import numpy as np
 
@@ -403,7 +399,7 @@ def fourier_v1_options_simple(  network_class           = None,
                                 inputs_dim_main         = None,
                                 outputs_dim_main        = None,
                                 n_fourier_features      = None,
-                                gaussian_stddev         = None,
+                                fourier_gaussian_stddev = None,
                                 inputs_dim_hypernet     = None,
                                 outputs_dim_hypernet    = None,
                                 activation_main         = None,
@@ -422,7 +418,7 @@ def fourier_v1_options_simple(  network_class           = None,
     if weights_info_main is None:
         weights_info_main = v1_weight_dimensions_simple(n_layers_hidden = n_layers_hidden_main,
                                                         hidden_dim      = hidden_dim_main,
-                                                        inputs_dim      = int(2 *fourier_gaussian_projection),
+                                                        inputs_dim      = int(2 *n_fourier_features),
                                                         outputs_dim     = outputs_dim_main)
         outputs_dim_hypernet = weights_info_main['weights_total_dim']
     model_opt = locals()
@@ -456,7 +452,7 @@ class keras_oneshot_fourier_v1(keras_oneshot_v2):
          '''
         
         self.fourier_layer = FourierFeatureProjection(  n_features      = self.model_opt['n_fourier_features'],
-                                                        gaussian_stddev = self.model_opt['gaussian_stddev'],)
+                                                        gaussian_stddev = self.model_opt['fourier_gaussian_stddev'],)
         
     def call_model_efficient(self, x, mu, training=False):
         '''Efficient forward pass of full hypernet model, allows for batch size >= 1
