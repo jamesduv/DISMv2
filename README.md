@@ -1,7 +1,8 @@
 # DISMv2
-
-IN-PROGRESS: model implementations are available, example training code and dataset in progress.
 Discretization Independent Surrogate Modeling, v2
+
+IN-PROGRESS: model implementations are available, example training code with dataset and python environment information in progress.
+
 
 Introduction
 ------------
