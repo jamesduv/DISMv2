@@ -13,6 +13,8 @@ Tensorflow implementations for the compared methods are provided, including:
 3. DVH: Design variable hypernetwork.
 4. DVH-FF: Design variable hypernetworks with Fourier features.
 
+The vehicle aerodynamics dataset from the paper is proprietary and not provided. An alternate Poisson-problem dataset will be provided, but is not yet available.
+
 Contents
 ----------------
 
@@ -33,16 +35,3 @@ The repo should contain the following files:
     ├── train_util.py
     └── README.md
 -----------------------------------
-
-
-**Functionality**
-
-File | Description 
---- | ---|
-dense_networks.py | class definition for dense neural network, constructed using Keras sequential API. Used as standalone model for DV-MLP, used as subcomponents for DV-Hnet and NIDS.
-keras_hypernetworks.py | class definition for DV-Hnet, subclasses ```tf.keras.Model.```
-nids_keras_networks.py | class definition for NIDS, subclasses ```tf.keras.Model.```
-tf_common.py | common tensorflow functions
-
-
-
