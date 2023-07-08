@@ -3,30 +3,23 @@ import numpy as np
 
 # modified from https://github.com/titu1994/tf_fourier_features
 class FourierFeatureProjection(tf.keras.layers.Layer):
-    def __init__(self, gaussian_projection, gaussian_scale, **kwargs):
+    def __init__(self, n_features, gaussian_stddev, **kwargs):
         super().__init__(**kwargs)
 
-        self.gauss_proj     = gaussian_projection
-        self.gauss_scale    = gaussian_scale
+        assert gaussian_stddev > 0, 'A positive standard deviation must be specified, {:1.2e} received'.format(gaussian_stddev)
+        self.n_features         = n_features
+        self.gaussian_stddev    = gaussian_stddev
 
     def build(self, input_shape):
         input_dim = input_shape[-1]
 
-        if self.gauss_proj <= 0:
-            # Assume basic projection
-            self.proj_kernel = tf.keras.layers.Dense(   input_dim, 
-                                                        use_bias    = False, 
-                                                        trainable   = False,
-                                                        kernel_initializer = 'identity', )
-
-        else:
-            initializer = tf.keras.initializers.TruncatedNormal(mean    = 0.0, 
-                                                                stddev  = self.gauss_scale)
-            self.proj_kernel = tf.keras.layers.Dense(units      = self.gauss_proj,
-                                                     activation = 'linear',
-                                                     use_bias   = False, 
-                                                     trainable  = False,
-                                                     kernel_initializer = initializer,)
+        initializer = tf.keras.initializers.TruncatedNormal(    mean    = 0.0, 
+                                                                stddev  = self.gaussian_stddev)
+        self.proj_kernel = tf.keras.layers.Dense(   units      = self.n_features,
+                                                    activation = 'linear',
+                                                    use_bias   = False, 
+                                                    trainable  = False,
+                                                    kernel_initializer = initializer,)
         self.built = True
 
     def call(self, inputs, **kwargs):
@@ -41,8 +34,8 @@ class FourierFeatureProjection(tf.keras.layers.Layer):
 
     def get_config(self):
         config = {
-            'gaussian_projection'   : self.gauss_proj,
-            'gaussian_scale'        : self.gauss_scale
+            'n_features'        : self.n_features,
+            'gaussian_scale'    : self.gaussian_stddev,
                 }
         base_config = super().get_config()
         return dict(list(base_config.items()) + list(config.items()))
